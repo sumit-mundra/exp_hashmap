@@ -1,5 +1,4 @@
 use std::thread;
-use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use rand::{thread_rng, Rng};
@@ -10,75 +9,83 @@ fn main() {
     let server = CustomerService::new();
     // let mut write_handles = Vec::new();
     const MAX_ID_VALUE: isize = 10000;
-    const OPERATIONS: usize = 100;
-    const DURATION_ZERO: Duration = Duration::from_secs(0);
-    let mut rd_ar: [JoinHandle<Duration>; OPERATIONS] =
-        core::array::from_fn(|_| thread::spawn(|| DURATION_ZERO));
-    let mut wr_ar: [JoinHandle<Duration>; OPERATIONS] =
-        core::array::from_fn(|_| thread::spawn(|| DURATION_ZERO));
-    let start = Instant::now();
-    let x = server.fill(Instant::now());
-    println!("Time to fill is {:?}", &x);
-    for i in 0..OPERATIONS {
-        let j = thread_rng().gen_range(0..MAX_ID_VALUE);
-        // write_handles.push(server.upsert_async(Customer::new(k, &format!("Kamal {}", &k), "Hasan")));
-        let t = Instant::now();
-        let name = &format!("Foo {}", &j);
-        wr_ar[i] = server.upsert_async(Customer::new(j, name, "Bar"), t);
-    }
-    for ind in 0..OPERATIONS {
-        let k = thread_rng().gen_range(0..MAX_ID_VALUE);
-        let t2 = Instant::now();
-        rd_ar[ind] = server.print_async(k, t2);
-    }
-    let total_writes = wr_ar.len() as f64;
-    let mut total_write_duration = Duration::from_micros(0);
-    for handle in wr_ar {
-        total_write_duration += handle.join().unwrap();
-    }
-    println!("After all write handles threads have finished");
-    println!("Finished writes in {:?}", start.elapsed());
-    let write_finished = Instant::now();
+    let operations: Vec<isize> = vec![100, 200, 500, 1000, 2000, 3000, 4000, 6000, 7000, 8000, 9000, 10000];
+    // let x = server.fill(Instant::now());
+    // println!("Time to fill is {:?}\n\n", &x);
 
-    let total_reads = rd_ar.len() as f64;
-    let mut total_read_duration = Duration::from_micros(0);
-    for handle in rd_ar {
-        total_read_duration += handle.join().unwrap();
+    println!("====Start====");
+    for ops in operations {
+        // const DURATION_ZERO: Duration = Duration::from_secs(0);
+        let mut rd_ar = Vec::new();
+        let mut wr_ar = Vec::new();
+        let start = Instant::now();
+        
+        for _ in 0..ops {
+            let j = thread_rng().gen_range(0..MAX_ID_VALUE);
+            // write_handles.push(server.upsert_async(Customer::new(k, &format!("Kamal {}", &k), "Hasan")));
+            let t = Instant::now();
+            let name = &format!("Foo {}", &j);
+            wr_ar.push(server.upsert_async(Customer::new(j, name, "Bar"), t));
+        }
+        for _ in 0..ops {
+            let k = thread_rng().gen_range(0..MAX_ID_VALUE);
+            let t2 = Instant::now();
+            rd_ar.push(server.print_async(k, t2));
+        }
+        let total_writes = wr_ar.len() as f64;
+        let mut total_write_duration = Duration::from_micros(0);
+        for handle in wr_ar {
+            total_write_duration += handle.join().unwrap();
+        }
+        // println!("After all write handles threads have finished");
+        // println!("Finished writes in {:?}", start.elapsed());
+        // let write_finished = Instant::now();
+
+        let total_reads = rd_ar.len() as f64;
+        let mut total_read_duration = Duration::from_micros(0);
+        for handle in rd_ar {
+            total_read_duration += handle.join().unwrap();
+        }
+        // println!("After all read handles threads have finished");
+        // let read_finished = write_finished.elapsed();
+        // println!("Finished reads in {:?}", &read_finished);
+        println!("For {} cycles",ops);
+        println!("Total duration (reads, write) = ({}, {})ms",total_read_duration.as_millis(),
+        total_write_duration.as_millis());
+        // println!(
+        //     "For {} cycles, latencies (reads, write) ({:?}, {:?})ms",
+        //     ops,
+        //     f32::from(total_read_duration.as_millis())/(ops as f32),
+        //     f128::from(total_write_duration.as_millis())/(ops as f32)
+        // );
+        println!(
+            "Average (read, write) = ({}, {}) ops/s",
+            total_reads / (total_read_duration.as_secs_f64()),
+            total_writes / (total_write_duration.as_secs_f64())
+        );
+        println!("Test Duration:: {:?}", Instant::now() - start);
+        println!("====End====");
     }
-    println!("After all read handles threads have finished");
-    let read_finished = write_finished.elapsed();
-    println!("Finished reads in {:?}", &read_finished);
-    println!(
-        "For {} cycles, Total read duration {}ms Total write duration {}ms",
-        OPERATIONS,
-        total_read_duration.as_millis(),
-        total_write_duration.as_millis()
-    );
-    println!(
-        "Average read {} ops/s, write {} ops/s",
-        total_reads / (total_read_duration.as_secs_f64()),
-        total_writes / (total_write_duration.as_secs_f64())
-    );
-    println!("Finished in {:?}", Instant::now() - start);
 }
 
 /// This module is intended to be backend managing map.
 /// allowing concurrent access to hashmap and update it
 /// map contains <customer id, customer data object>
 mod server {
-    use rustc_hash::FxHashMap;
+    // use rustc_hash::FxHashMap;
+    use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use std::thread;
     use std::thread::JoinHandle;
     use std::time::{Duration, Instant};
     pub struct CustomerService {
-        store: Arc<Mutex<FxHashMap<isize, Customer>>>,
+        store: Arc<Mutex<HashMap<isize, Customer>>>,
     }
 
     impl CustomerService {
         pub fn new() -> CustomerService {
             CustomerService {
-                store: Arc::new(Mutex::new(FxHashMap::default())),
+                store: Arc::new(Mutex::new(HashMap::default())),
             }
         }
 
@@ -108,7 +115,7 @@ mod server {
             let arc = Arc::clone(&self.store);
             let mut k = arc.lock().unwrap();
             for i in 0..10000 {
-                let _c = &k.insert(i, Customer::new(i, &"F"[..], &"N"[..]));
+                let _c = &k.insert(i, Customer::new(i, &"FN"[..], &"LN"[..]));
             }
             instant.elapsed()
         }
@@ -120,6 +127,14 @@ mod server {
                     match arc.try_lock() {
                         Ok(guard) => {
                             let _c = guard.get(&id);
+                            match _c {
+                                None => {
+                                    //println!("Not yet filled {}", id)
+                                },
+                                Some(_customer) => {
+                                    _customer.print();
+                                }
+                            };
                             return instant.elapsed();
                         }
                         Err(_) => {
@@ -128,14 +143,7 @@ mod server {
                         }
                     }
                 }
-                //match opt {
-                //     None => {
-                //         //println!("Not yet filled {}", id)
-                //     },
-                //     Some(_customer) => {
-                //         // _customer.print();
-                //     }
-                // };
+                
             })
         }
     }
@@ -161,10 +169,10 @@ mod server {
 
         /// To print the customer struct on console
         pub fn print(&self) {
-            println!(
-                "id: {}, FN: {}, LN: {}",
-                self.id, self.first_name, self.last_name
-            )
+            // println!(
+            //     "id: {}, FN: {}, LN: {}",
+            //     self.id, self.first_name, self.last_name
+            // )
         }
     }
 }
