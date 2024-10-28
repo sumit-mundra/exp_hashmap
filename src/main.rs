@@ -26,8 +26,6 @@ fn main() {
             let t = Instant::now();
             let name = &format!("Foo {}", &j);
             wr_ar.push(server.upsert_async(Customer::new(j, name, "Bar"), t));
-        }
-        for _ in 0..ops {
             let k = thread_rng().gen_range(0..MAX_ID_VALUE);
             let t2 = Instant::now();
             rd_ar.push(server.print_async(k, t2));
@@ -49,7 +47,7 @@ fn main() {
         // println!("After all read handles threads have finished");
         // let read_finished = write_finished.elapsed();
         // println!("Finished reads in {:?}", &read_finished);
-        println!("For {} cycles",ops);
+        println!("\nFor {} cycles",ops);
         println!("Total duration (reads, write) = ({}, {})ms",total_read_duration.as_millis(),
         total_write_duration.as_millis());
         // println!(
@@ -102,6 +100,7 @@ mod server {
                         }
                         Err(_) => {
                             // thread::sleep(Duration::from_millis(100));
+                            print!("w");
                             continue;
                         }
                     }
@@ -139,6 +138,7 @@ mod server {
                         }
                         Err(_) => {
                             // thread::sleep(Duration::from_millis(1));
+                            print!("r");
                             continue;
                         }
                     }

@@ -6,7 +6,7 @@ class HashMapRunner {
     private static final int MAX_ID_VALUE = 10000;
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        Thread.sleep(2000);
+    Thread.sleep(2000);
         
         int[] operations = new int[] { 100, 200, 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000 };
         for (int i = 0; i < operations.length; i++) {
@@ -21,10 +21,8 @@ class HashMapRunner {
             for (int j = 0; j < ops; j++) {
                 Integer randInteger = random.nextInt(MAX_ID_VALUE);
                 writeFutures.add(service.upsert(randInteger, new Customer(randInteger, "Foo" + randInteger, "Bar")));
-            }
-            for (int k = 0; k < ops; k++) {
-                Integer randInteger = random.nextInt(MAX_ID_VALUE);
-                readFutures.add(service.readCustomer(randInteger));
+                Integer randInteger2 = random.nextInt(MAX_ID_VALUE);
+                readFutures.add(service.readCustomer(randInteger2));
             }
             Long writeTotal = 0L;
             Long readTotal = 0L;
@@ -79,7 +77,7 @@ class HashMapRunner {
         public Future<Long> readCustomer(Integer id) {
             final long startTime = System.nanoTime();
             return executor.submit(() -> {
-                Customer customer = store.get(id);
+                store.get(id);
                 // System.out.println("customer = " + customer);
                 long endTime = System.nanoTime();
                 return endTime - startTime;
